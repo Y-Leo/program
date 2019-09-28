@@ -1,0 +1,300 @@
+#ifndef _ThreeChess_H_
+#define _ThreeChess_H_
+
+
+#include <stdio.h>
+#include <windows.h>
+#include <time.h>
+#pragma warning (disable:4996)
+
+
+#define ROW 3
+#define COL 3
+
+#define PLAYER_COLOR 'X'
+#define COMPUTER_COLOR 'O'
+
+
+void Game();
+
+void InitBoard(char board[][COL],int row, int col);
+
+void ShowBoard(char board[][COL], int row, int col);
+
+char Judge(char board[][COL], int row, int col);
+
+void PlayerMove(char board[][COL], int row, int col);
+
+void ComputerMove(char board[][COL], int row, int col);
+
+int GetRandom(int start, int end);
+
+#endif 
+
+2、main()文件：
+
+#include "ThreeChess.h"
+
+
+void ShowMenu()
+{
+	printf("#########《三子棋游戏》##########\n");
+	printf("#################################\n");
+	printf("########## 1. Play  #############\n");
+	printf("########## 2. Exit  #############\n");
+	printf("#################################\n");
+	printf("Please Select: ");
+}
+
+
+int main()
+{
+	int select = 0;
+	int quit = 0;
+	while (!quit){
+		ShowMenu();
+		scanf("%d", &select);
+		Sleep(500);
+		system("CLS");
+		switch (select){
+		case 1:
+			Game();
+			break;
+		case 2:
+			printf("Bye bye!\n");
+			quit = 1;
+			break;
+		default:
+			printf("select error, try again!\n");
+			break;
+		}
+	}
+	system("pause");
+	return 0;
+}
+
+3、函数实现源文件：
+
+#include "ThreeChess.h"
+
+/*对数组进行初始化。 方法一：
+void InitBoard(char board[][COL], int row, int col)
+{
+	int i = 0;
+	for (i; i <= ROW; i++)
+	{
+		int j = 0;
+		for (j; j <= COL; j++)
+		{
+			board[i][j] = ' ';//全部置为空格
+		}
+	}
+}
+*/
+
+//对数组进行初始化。  方法二
+void InitBoard(char board[][COL], int row, int col)
+{
+	memset(board, ' ', sizeof(board[0][0])* row*col);
+}
+//memset函数用来对一段内存空间全部设置为某个字符
+
+
+void ShowBoard(char board[][COL], int row, int col)
+{
+	printf("   |  1 |  2 | 3\n");
+	printf("---|----|----|----\n");
+	int i = 1;
+	for (i = 1; i <= ROW; i++)
+	{
+		printf(" %d | %c  | %c  | %c\n",i, board[i-1][0], board[i-1][1], board[i-1][2]);
+		if (i!=ROW)
+		{
+			printf("---|----|----|----\n");
+		}
+	}
+}
+
+
+char Judge(char board[][COL], int row, int col)
+{
+	int i = 0;
+	for (i; i < row; i++)
+	{
+		if (board[i][0] != ' ' && board[i][0] == board[i][1] && board[i][1] == board[i][2])//行
+		{
+			return board[i][0];
+		}
+	}
+
+	for (i = 0; i < col; i++)
+	{
+		if (board[0][i] != ' ' && board[0][i] == board[1][i] && board[1][i] == board[2][i])//列
+		{
+			return board[0][i];
+		}
+	}
+	if (board[0][0] != ' ' && board[0][0] == board[1][1] && board[1][1] == board[2][2])
+	{
+		return board[1][1];
+	}
+	if (board[0][2] != ' ' && board[0][2] == board[1][1] && board[1][1] == board[2][0])
+	{
+		return board[1][1];
+	}
+	for (i = 0; i < row; i++)
+	{
+		int j = 0;
+		for (; j < col; j++)
+		{
+			if (board[i][j] == ' ')
+			{
+				return 'N';
+			}
+		}
+	}
+	return 'E';
+}
+
+
+void PlayerMove(char board[][COL], int row, int col)
+{
+	while (1)
+	{
+		int x = 0;
+		int y = 0;
+		printf("Please input Pos<x,y>:");
+		scanf("%d %d", &x, &y);
+		if (x >= 1 && x <= 3 && y >= 1 && y <= 3)
+		{
+			if (board[x - 1][y - 1] == ' ')
+			{
+				board[x - 1][y - 1] = PLAYER_COLOR;
+				printf("\n");
+				Sleep(500);
+				break;
+			}
+			else{
+				printf("Inter error,please try again！\n");
+			}
+		}
+		else{
+			printf("Enter wrongful!\n");
+		}
+	}
+}
+
+
+
+void ComputerMove(char board[][COL], int row, int col)
+{
+	while (1)
+	{
+		//int x = rand()%row;[0,2]
+		//int y = rand()%col;[0,2]
+		int x = GetRandom(1, 3);//随机数生成电脑落子的横坐标
+		int y = GetRandom(1, 3);//随机数生成电脑落子的纵坐标
+		if (board[x-1][y-1] == ' ')
+		{
+			board[x - 1][y - 1] = COMPUTER_COLOR;
+			printf("\n");
+			break;
+		}
+	}
+}
+
+int GetRandom(int start, int end)
+{
+	return rand() % (end - start + 1) + start;//固定公式，随机数生成区间
+}
+
+
+void Game()
+{
+	char result = '\0';
+	char board[ROW][COL];
+	InitBoard(board, ROW, COL);
+	ShowBoard(board, ROW, COL);
+	srand((unsigned int)time(NULL));
+	while (1){
+		PlayerMove(board, ROW, COL);
+		ShowBoard(board, ROW, COL);
+		result = Judge(board, ROW, COL);
+		if (result != 'N'){//next
+			break;
+		}
+		ComputerMove(board, ROW, COL);
+		ShowBoard(board, ROW, COL);
+		result = Judge(board, ROW, COL);
+		if (result != 'N'){
+			break;
+		}
+	}
+	switch (result){
+	case 'X': //you win
+		printf("You win!\n");
+		break;
+	case 'O': //computer win
+		printf("The computer win!\n");
+		break;
+	case 'E': //Equal
+		printf("Equal!\n");
+		break;
+	default:
+		printf("bug?!\n");
+		break;
+	}
+	//memset(board, ' ', sizeof(board));
+	printf("再来一把？\n");
+}
+
+memset函数用来对一段内存空间全部设置为某个字符。
+
+不知道memset函数的戳这里---->memset。
+
+*注*：
+
+一、这里先介绍一下多文件编写代码：
+
+1、需要一个头文件，以 .h 结尾，里面放置函数的声明；格式如下：
+
+#ifndef _ThreeChess_H_
+#define _ThreeChess_H_
+
+//需要声明的函数
+//、、、、、、
+
+#endif 
+2、需要一个源文件，以 .c 结尾，里面放置函数的实现；该文件顶端，需要和头文件进行连接；格式如下：
+
+#include "ThreeChess.h"
+3、需要一个源文件放置main函数，文件名以 .c 结尾；同样需要和头文件进行连接；格式如上；
+
+二、其他相关知识点：
+
+1、Windows系统相关编程操作
+
+#include <windows.h>//以下函数的头文件
+
+
+system("pause");//系统暂停的意思，等待用户信号；不然控制台程序会一闪即过，你来不及看到执行结果。
+system("cls");//清屏操作，将命令行窗口内容清空
+Sleep(500);//休眠函数，系统暂停500毫秒，数字可以改
+2、随机数生成：
+
+计算机不可能生成真正的随机数，全部是伪随机数；它是根据一个数（一个种子），通过某种运算得来的；
+
+srand() 用来设置 rand() 产生随机数时的随机数种子。参数 seed 必须是个整数，如果每次 seed 都设相同值，rand() 所产生的随机数值每次就会一样。
+
+rand() 产生的随机数在每次运行的时候都是与上一次相同的。若要不同, 用函数 srand() 初始化它。可以利用 srand((unsigned int)(time(NULL)) 的方法，产生不同的随机数种子，因为每一次运行程序的时间是不同的。
+
+还有，在一定范围内，任意区间【start，end】随机数求取公式为 rand()%(end-start)+start
+
+具体使用方法如下：
+
+srand((unsigned int)time(NULL));
+
+int GetRandom(int start, int end)
+{
+	return rand() % (end - start + 1) + start;//固定公式，随机数生成区间
+}
