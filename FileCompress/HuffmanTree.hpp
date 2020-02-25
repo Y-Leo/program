@@ -53,6 +53,11 @@ public:
        _DestroyTree(_pRoot);
    }
 
+   Node* GetRoot()
+   {
+       return _pRoot;
+   }
+
    void CreateHuffManTree(const std::vector<W>& vWeight, const W& invalid)
    {
        //1、构建森林
@@ -100,9 +105,3 @@ private:
 private:
        Node* _pRoot;
 };
-
-void TestHuffManTree()
-{
-    std::vector<int> v{3,1,7,5};
-    HuffManTree<int> t(v);
-}

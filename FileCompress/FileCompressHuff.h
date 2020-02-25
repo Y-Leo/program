@@ -2,10 +2,11 @@
 
 #include <string>
 #include <vector>
+#include "HuffmanTree.hpp"
 
 struct CharInfo
 {
-   char _ch;  //具体的字符
+   unsigned char _ch;  //具体的字符
    size_t _count;  //字符出现的次数
    std::string _strCode;  //字符编码
 
@@ -29,7 +30,6 @@ struct CharInfo
    }
 };
 
-
 class FileCompressHuff
 {
 public:
@@ -41,6 +41,10 @@ public:
     void UNCompressFile(const std::string& path);
 
 private:
+    //压缩信息
+    void WriteHead(FILE* fOut,const std::string& filePostFix);
+    std::string GetFilePostFix(const std::string& fileName);
+    void ReadLine(FILE* fIn,std::string& strInfo);
     void GenerateHuffManCode(HuffManTreeNode<CharInfo>* pRoot);
 private:
     std::vector<CharInfo> _fileInfo;
