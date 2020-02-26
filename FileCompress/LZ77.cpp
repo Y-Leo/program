@@ -1,5 +1,6 @@
 #include "LZ77.h"
 #include <iostream>
+#include <string.h>
 #include <assert.h>
 using namespace std;
 
@@ -42,7 +43,7 @@ void LZ77::CompressFile(const std::string& strFilePath)
     fseek(fIn, 0, SEEK_SET);
 
     //从压缩文件中读取一个缓冲区的数据到窗口中
-    USH lookAhead = fread(_pWin, 1, 2 * WSIZE, fIn);
+    size_t lookAhead = fread(_pWin, 1, 2 * WSIZE, fIn);
     USH hashAddr = 0;
     
     //abcdefg.....设置起始的hashAddr
@@ -117,7 +118,7 @@ void LZ77::CompressFile(const std::string& strFilePath)
             lookAhead -= curMatchLength;
 
             //将已经匹配的字符串按三个一组插入到哈希表中
-            --curMatchDist;  //当前字符已经插入了
+            --curMatchLength;  //当前字符已经插入了
             while(curMatchLength)
             {
                 start++;
@@ -127,18 +128,70 @@ void LZ77::CompressFile(const std::string& strFilePath)
             ++start;  //在循环中,start 少加了一次
         }
     }
+
+    //检测先行缓冲区中剩余字符个数
+    if(lookAhead <= MIN_LOOKAHEAD)
+        FillWindow(fIn, lookAhead, start);
+
     //标记位数如果不够8个比特位：
     if(bitCount > 0 && bitCount < 8)
     {
         chFlag <<= (8 - bitCount);
         fputc(chFlag, fOutF);
     }
-    //将压缩文件和标记文件合成一个
+
+    fclose(fOutF);
+
+    //将压缩文件和标记文件合为一个文件
+    MergeFile(fOUT,fileSize);
+
     fclose(fIn);
     fclose(fOUT);
-    fclose(fOutF);
+
+    //TODO：删除原来的标记信息的临时文件
 }
 
+void LZ77::FillWindow(FILE* fIn, size_t& lookAhead, USH& start)
+{
+    //start 压缩已经进行到右窗，先行缓冲区剩余数据不够MIN_LOOKAHEAD
+    if(start >= WSIZE)
+    {
+        //1、将右窗中的数据搬移到左侧
+        memcpy(_pWin, _pWin + WSIZE, WSIZE);
+        memset(_pWin + WSIZE, 0, WSIZE);
+        start -= WSIZE;
+
+        //2、更新哈希表
+        _ht.Update();
+
+        //3、向右窗中补充WSIZE个的待压缩数据
+        if(!feof(fIn))
+            lookAhead += fread(_pWin + WSIZE, 1, WSIZE, fIn);
+    }
+}
+
+void LZ77::MergeFile(FILE* fOut, ULL fileSize)
+{
+    //将压缩文件和标记文件合成一个
+    //1、读取标记信息中的文件内容，然后将结果写入到压缩文件中
+    FILE* fInF = fopen("3.txt", "rb");
+    size_t flagSize = 0;
+    UCH* pReadbuff = new UCH[1024];
+    while(true)
+    {
+        size_t rdSize = fread(pReadbuff, 1, 1024, fInF);
+        if(0 == rdSize)
+            break;
+
+        fwrite(pReadbuff, 1, rdSize, fOut);
+        flagSize += rdSize;
+    }
+
+    fwrite(&flagSize, sizeof(flagSize), 1, fOut);
+    fwrite(&fileSize, sizeof(fileSize), 1, fOut);
+    fclose(fInF);
+    delete[] pReadbuff;
+}
 
 //chFlag:该字节中的每个比特位是用来区分当前字节是原字符还是长度
 //0：原字符
@@ -208,4 +261,99 @@ USH LZ77::LongestMatch(USH matchHead, USH& MatchDist, USH start)
 
     MatchDist = start - curMatchStart;
     return maxMatchLen;
+}
+
+//解压缩
+void LZ77::UNCompressFile(const std::string& strFilePath)
+{
+    //打开压缩文件
+    FILE* fInD = fopen(strFilePath.c_str(),"rb");
+    if(nullptr == fInD)
+    {
+        cout << "压缩文件打开失败" << endl;
+        return;
+    }
+
+    //操作标记数据的文件指针
+    FILE* fInF = fopen(strFilePath.c_str(),"rb");
+    if(nullptr == fInF)
+    {
+        cout << "压缩文件打开失败" << endl;
+        return;
+    }
+
+    //获取原文件的大小
+    ULL fileSize = 0;
+    fseek(fInF, 0 - sizeof(fileSize), SEEK_END);
+    fread(&fileSize, sizeof(fileSize), 1, fInF);
+
+    //获取标记信息的大小
+    size_t flagSize = 0;
+    fseek(fInF, 0 - sizeof(fileSize) - sizeof(flagSize), SEEK_END);
+    fread(&flagSize, sizeof(flagSize), 1, fInF);
+
+    //将读取标记信息的文件指针移动到保存标记数据的起始位置
+    fseek(fInF, 0 - sizeof(flagSize) - sizeof(fileSize) - flagSize, SEEK_END);
+
+    //开始解压缩
+    //打开一个文件保存解压缩信息
+    FILE* fOut = fopen("4.txt","wb");
+    assert(fOut);
+
+    FILE* fR = fopen("4.txt","rb");
+
+    UCH bitCount = 0;
+    UCH chFlag = 0;
+    ULL encodeCount = 0;
+    while(encodeCount < fileSize)
+    {
+        //读取标记
+        if(0 == bitCount)
+        {
+            chFlag = fgetc(fInF);
+            bitCount = 8;
+        }
+
+        if(chFlag & 0X80)
+        {
+            //为1：读取<距离，长度>对
+            USH matchLen = fgetc(fInD) + 3;
+            USH matchDist = 0;
+            fread(&matchDist, sizeof(matchDist), 1, fInD);
+
+            //清空缓冲区：系统会将缓冲区中的数据写入到文件中
+            fflush(fOut);
+
+            //更新已经解码的字节数大小
+            encodeCount += matchLen;
+
+            //fR:读取前文中匹配的内容
+            UCH ch;
+            fseek(fR, 0 - matchDist, SEEK_END);
+            while(matchLen)
+            {
+                ch = fgetc(fR);
+                fputc(ch, fOut);
+                matchLen--;
+
+                //在还原<距离，长度>对时，一定要清空缓冲区，否则可能导致还原出错
+                fflush(fOut);
+            }
+        }
+        else
+        {
+            //为0: 读取的是原字符
+            UCH ch = fgetc(fInD);
+            fputc(ch, fOut);
+            encodeCount += 1;
+        }
+
+        chFlag <<= 1;
+        bitCount--;
+    }
+
+    fclose(fInD);
+    fclose(fInF);
+    fclose(fOut);
+    fclose(fR);
 }

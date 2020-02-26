@@ -11,6 +11,7 @@ public:
 
     void HashFunc(USH& hashAddr,UCH ch);
     USH GetNext(USH matchHead);
+    void Update();
 private:
     USH H_SHIFT();
 private:

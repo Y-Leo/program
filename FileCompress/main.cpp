@@ -4,6 +4,7 @@ int main()
 {
     LZ77 lz;
     lz.CompressFile("1.txt");
+    lz.UNCompressFile("2.lzp");
     return 0;
 }
 
