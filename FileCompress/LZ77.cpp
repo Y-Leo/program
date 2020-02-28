@@ -297,10 +297,10 @@ void LZ77::UNCompressFile(const std::string& strFilePath)
 
     //开始解压缩
     //打开一个文件保存解压缩信息
-    FILE* fOut = fopen("4.txt","wb");
+    FILE* fOut = fopen("5.txt","wb");
     assert(fOut);
 
-    FILE* fR = fopen("4.txt","rb");
+    FILE* fR = fopen("5.txt","rb");
 
     UCH bitCount = 0;
     UCH chFlag = 0;

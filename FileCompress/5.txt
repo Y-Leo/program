@@ -1,0 +1,51 @@
+mnoabczxyuvwabc123456abczxydefgh
+#include "LZ77.h"
+#include <iostream>
+#include <string.h>
+#include <assert.h>
+using namespace std;
+
+const USH MIN_LOOKAHEAD = MAX_MATCH + MIN_MATCH + 1;
+const USH MAX_DIST = WSIZE - MIN_LOOKAHEAD;
+
+LZ77::LZ77()
+    :_pWin(new UCH[WSIZE * 2])
+     ,_ht(WSIZE)
+{}
+
+LZ77::~LZ77()
+{
+    delete[] _pWin;
+    _pWin = nullptr;
+}
+
+void LZ77::CompressFile(const std::string& strFilePath)
+{
+    //打开源文件
+    FILE* fIn = fopen(strFilePath.c_str(),"rb");
+    if(nullptr == fIn)
+    {
+        cout << "打开文件失败" << endl;
+        return;
+    }
+    
+    //获取文件大小
+    fseek(fIn, 0, SEEK_END);
+    ULL fileSize = ftell(fIn);
+
+    //如果源文件的大小小于MIN_MATCH，则不进行处理
+    if(fileSize <= MIN_MATCH)
+    {
+        cout << "文件太小，不压缩"  << endl;
+        return;
+    }
+
+    //调整文件指针位置
+    fseek(fIn, 0, SEEK_SET);
+
+    //从压缩文件中读取一个缓冲区的数据到窗口中
+    size_t lookAhead = fread(_pWin, 1, 2 * WSIZE, fIn);
+    USH hashAddr = 0;
+    
+    //abcdefg.....设置起始的hashAddr
+    for(USH i = 0; i < MIN_MATCH - 1; ++i)

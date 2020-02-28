@@ -46,7 +46,7 @@ void FileCompressHuff::CompressFile(const std::string& path)
     GenerateHuffManCode(t.GetRoot());
 
     //4、用获取到的字符编码重新改写源文件
-    FILE* fOut = fopen("2.txt","wb");
+    FILE* fOut = fopen("3.lzp","wb");
     if(nullptr == fOut)
     {
         assert(false);
@@ -138,7 +138,7 @@ void FileCompressHuff::UNCompressFile(const std::string& path)
     HuffManTree<CharInfo> t;
     t.CreateHuffManTree(_fileInfo,CharInfo(0));
 
-    FILE* fOut = fopen("3.txt","wb");
+    FILE* fOut = fopen("4.txt","wb");
     assert(fOut);
 
     //解压缩
