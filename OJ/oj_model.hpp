@@ -51,7 +51,7 @@ class OjModel
                 //一行数据
                 //1、切割字符串
                 std::vector<std::string> vec;
-                StringTools::Split(line, "\t", &vec);
+                StringTools::Split(line, " ", &vec);
                 if(vec.size() != 4)
                 {
                     continue;
