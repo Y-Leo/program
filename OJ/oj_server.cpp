@@ -24,7 +24,7 @@ int main()
      //1、要获取试题的信息
      //   试题的信息来源于文件当中（读试题文件，获取信息）
      svr.Get("/all_questions", [&ojmodel](const Request& req, Response& resp){
-             std::vector<Questions> ques;
+             std::vector<Question> ques;
              ojmodel.GetAllQuestions(&ques);
 
              /*
@@ -66,11 +66,14 @@ int main()
              std::string desc;
              std::string header;
              //从querystr当中获取id
-             printf("path:%s\n", req.path.c_str());
              LOG(INFO, "req.matches") << req.matches[0]<< ":" << req.matches[1] <<std::endl;
-             ojmodel.GetOneQuestion(req.matches[1].str(), &desc, &header);
-             //2、在题目路径下去加载单个题目的描述信息，进行组织返回给浏览器
-             std::string html = "1";  
+             //2、在题目路径下去加载单个题目的描述信息
+             struct Question ques;
+             ojmodel.GetOneQuestion(req.matches[1].str(), &desc, &header, &ques);
+             //3、进行组织返回给浏览器
+             
+             std::string html;
+             OjView::ExpandOneQuestion(ques, desc, header, &html);
              resp.set_content(html, "text/html; charset=UTF-8");
              });
      LOG(INFO, "listen in 0.0.0.0:19999") << std::endl;
