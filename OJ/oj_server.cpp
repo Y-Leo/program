@@ -47,7 +47,7 @@ int main()
              std::string html;
              OjView::ExpandAllQuestionshtml(&html, ques);
 
-             LOG(INFO, html);
+             //LOG(INFO, html);
 
              resp.set_content(html, "text/html; charset=UTF-8");
              });
@@ -56,12 +56,26 @@ int main()
      //    \b：单词的分界
      //    *：匹配任意字符串
      //    \d：匹配一个数字
+     //    ():分组应用
      // 源码转译：特殊字符就按照特殊字符源码来编译
      // R"(str)"
-     svr.Get(R"(/question/\d)", [&ojmodel](const Request& req, Response& resp){
+     svr.Get(R"(/question/(\d+))", [&ojmodel](const Request& req, Response& resp){
+             //question/1
+             //1、去试题模块中查找对应题号的具体题目信息
+             //   map当中（序号 名称 题目地址 难度）  
+             std::string desc;
+             std::string header;
+             //从querystr当中获取id
+             printf("path:%s\n", req.path.c_str());
+             LOG(INFO, "req.matches") << req.matches[0]<< ":" << req.matches[1] <<std::endl;
+             ojmodel.GetOneQuestion(req.matches[1].str(), &desc, &header);
+             //2、在题目路径下去加载单个题目的描述信息，进行组织返回给浏览器
              std::string html = "1";  
              resp.set_content(html, "text/html; charset=UTF-8");
              });
+     LOG(INFO, "listen in 0.0.0.0:19999") << std::endl;
+     LOG(INFO, "Server ready") << std::endl;
+     //listen 会进行阻塞 
      svr.listen("0.0.0.0", 19999);
      return 0;
 }

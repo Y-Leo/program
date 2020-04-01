@@ -55,14 +55,17 @@ enum LogLevel
     DEBUG
 };
 
-inline void Log(LogLevel lev, const char* file, int line, std::string& logmsg)
-{
+//使用inline，就会在需要生成日志，即调用Log函数处展开，拿到当前的文件名和行号，而不是到这个文件来执行Log函数,拿到这个文件的文件名和行号
+inline std::ostream& Log(LogLevel lev, const char* file, int line, const std::string& logmsg)
+ {
     std::string level_info = Level[lev];
     std::string TimeStamp;
     LogTime::GetTimeStamp(&TimeStamp);
     //[时间 日志等级 文件：行号] 具体的日志信息
     std::cout << "[" << TimeStamp << " " << level_info << " " << file << ":"
-        << line << "]" << logmsg << std::endl;
+        << line << "]" << logmsg;
+    return std::cout;
 }
 
+//宏替换，用户不需要手动输入文件名和行号
 #define LOG(lev, msg) log(lev, __FILE__, __LINE__, msg)

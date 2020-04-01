@@ -6,6 +6,7 @@
 #include <fstream>
 #include <algorithm>
 #include "tools.hpp"
+#include "oj_log.hpp"
 
 //试题信息有四个部分需要维护
 //试题ID、试题名称、试题路径、试题难度
@@ -36,6 +37,34 @@ class OjModel
                       });
             return true;
         }        
+
+        bool GetOneQuestion(const std::string& id, std::string* desc, std::string* header)
+        {
+            //1、根据id去查找对应的题目信息，最重要的是这个题目在哪加载
+            auto iter = model_map_.find(id);
+            if(iter == model_map_.end())
+            {
+                LOG(ERROR, "Not Found Question id is ") << id << std::endl;
+                return false; 
+            }
+            //iter->second.path_;+ (desc.txt header.cpp)
+            //加载具体的单个题目信息,从保存的路径上面去加载
+            //从具体的题目文件当中去获取两部分信息，描述，header头
+            int ret = FileOper::ReadDataFromFile(DescPath(iter->second.path_), desc);
+            if(ret == -1)
+            {
+                LOG(ERROR, "Read desc failed ") << std::endl;
+                return false;
+            }
+            ret = FileOper::ReadDataFromFile(DescPath(iter->second.path_), header);
+            if(ret == -1)
+            {
+                LOG(ERROR, "Read header failed ") << std::endl;
+                return false;
+            }
+            return true;
+        }
+
     private:
         bool LoadQuestions(const std::string& configfile_path)
         {
@@ -67,6 +96,17 @@ class OjModel
             file.close();
             return true;
         }
+
+    private:
+        std::string DescPath(const std::string& ques_path)
+        {
+            return ques_path + "desc.txt";
+        }
+        std::string HeaderPath(const std::string& ques_path)
+        {
+            return ques_path + "header.cpp";
+        }
+
     private:
         //管理方式：
         //map（底层红黑树）:map<key(id),value(TestQues)> model_map;
