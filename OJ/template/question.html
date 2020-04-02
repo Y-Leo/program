@@ -8,9 +8,10 @@
         <div>{{desc}}</div>
         <!--代码的编辑框-->
         <div>
-            <form action="/https:www.baidu.con" method="POST">
-                <textarea name="name" rows=50 cols=150>{{header}}</textarea>
+            <form action="/question/{{id}}" method="POST">
+                <textarea name="code" rows=50 cols=150>{{header}}</textarea>
                 <br>
+                <!--<textarea name="stdin" rows=10 cols=150></textarea>-->
                 <input type="submit" formenctype="appliaction/json" value="Submit">
             </form>
         </div>

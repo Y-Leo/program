@@ -6,6 +6,7 @@
 #include "oj_model.hpp"
 #include "oj_view.hpp"
 #include "oj_log.hpp"
+#include "compile.hpp"
 
 int main()
 {
@@ -76,6 +77,31 @@ int main()
              OjView::ExpandOneQuestion(ques, desc, header, &html);
              resp.set_content(html, "text/html; charset=UTF-8");
              });
+     svr.Post(R"(/question/(\d+))", [&ojmodel](const Request& req, Response& resp){
+              //key:value
+              //1、从正文当中提取出来提交的内容，主要是提取code字段所对应的内容
+              //   提交的内容当中有url编码--->提交内容进行解码
+              //   提取完成后的数据放到 unordered_map<std::string, std::string>
+              std::unordered_map<std::string, std::string> pram;
+              UrlUtil::PraseBody(req.body, &pram);
+              //for(const auto& pr : pram)
+              //{
+              //  LOG(INFO, "code") << pr.second << std::endl;
+              //}
+              //2、编译&&运行
+              //   2.1 需要给提交的代码增加头文件， 测试用例， main函数
+              std::string code;
+              ojmodel.SplicingCode(pram["code"], req.matches[1].str(), &code);
+              //LOG(INFO, "code ") << code << std::endl;
+              Json::Value req_json;
+              req_json["code"] =  code;
+              //req_json["stdin"] = "";
+              Json::Value Resp_json;
+              Compiler::CompileAndRun(req_json, &Resp_json);
+              //3、构造响应，json
+             std::string html = "1";
+             resp.set_content(html, "text/html; charset=UTF-8");
+              });
      LOG(INFO, "listen in 0.0.0.0:19999") << std::endl;
      LOG(INFO, "Server ready") << std::endl;
      //listen 会进行阻塞 

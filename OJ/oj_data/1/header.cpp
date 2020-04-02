@@ -1,17 +1,15 @@
 #include <iostream>
 #include <vector>
-using namespace std; 
-struct ListNode 
+#include <string>
+#include <map>
+#include <algorithm>
+using namespace std;
+
+class Solution
 {
-     int val;
-     struct ListNode *next;
-     ListNode(int x) :
-     val(x), next(NULL) {}
-};
-class Solution {
 public:
-    vector<int> printListFromTailToHead(ListNode* head) {
-                
-            
-    }
+    bool isPalindrome(int x)
+    {
+
+    } 
 };
