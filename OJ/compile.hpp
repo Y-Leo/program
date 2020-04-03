@@ -3,6 +3,8 @@
 #include <string>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/stat.h> 
+#include <sys/resource.h>
 #include <unistd.h>
 #include <json/json.h>
 #include "oj_log.hpp"
@@ -34,14 +36,16 @@ public:
             return;
         }
         //3、编译
-        if(!Compile())
+        if(!Compile(tmp_filename))
         {
-
+            LOG(ERROR, "Compile Erroe") << std::endl;
+            return;
         }
         //4、运行
-        if(!Run())
+        if(Run(tmp_filename) != 0)
         {
-
+            LOG(ERROR, "Compile Erroe") << std::endl;
+            return;
         }
         //5、构造响应
         
@@ -50,7 +54,7 @@ private:
    static std::string WriteTmpFile(const std::string& code)
    {
        //1、组织文件名称，组织文件的前缀名称，用来区分源码文件，可执行文件是同一组数据
-       std::string tmp_filename = "tmp_" + std::to_string(LogTime::GetTimeStamp());
+       std::string tmp_filename = "/tmp_" + std::to_string(LogTime::GetTimeStamp());
        
        //写文件
        int ret = FileOper::WriteDataToFile(SrcPath(tmp_filename), code);
@@ -77,6 +81,16 @@ private:
         return "./tmp_files" + filename + ".err";
    }
 
+   static std::string StdoutPath(const std::string& filename)
+   {
+        return "./tmp_files" + filename + ".stdout";
+   }
+
+   static std::string StderrPath(const std::string& filename)
+   {
+        return "./tmp_files" + filename + ".stderr";
+   }
+
    static bool Compile(const std::string& filename)
    {
         //1、构造编译命令--->g++ src -o [exec] -std=c++11
@@ -92,6 +106,9 @@ private:
         snprintf(Command[2], 49, "%s", "-o");
         snprintf(Command[3], 49, "%s", ExePath(filename).c_str());
         snprintf(Command[4], 49, "%s", "-std=c++11");
+        snprintf(Command[5], 49, "%s", "-D");//加一个宏，标志
+        snprintf(Command[6], 49, "%s", "CompileOnline");//宏名称
+        Command[7] = NULL;
         //2、创建子进程
         //   2.1 父进程 --> 等待子进程退出
         //   2.2 子进程 --> 进程程序替换 --> g++
@@ -105,10 +122,17 @@ private:
         {
             //child
             int fd = open(ErrorPath(filename).c_str(), O_CREAT | O_RDWR, 0664);
+
+            if(fd < 0)
+            {
+                LOG(ERROR, "open Compile errorfile failed") << ErrorPath(filename) <<std::endl;
+                exit(1);
+            }
             //重定向
             dup2(fd, 2);
             //程序替换
             execvp(Command[0], Command);
+            LOG(ERROR, "execvp failed") << std::endl;
             exit(0);
         }
         else
@@ -117,10 +141,66 @@ private:
             waitpid(pid, NULL, 0);
         }
         //3、验证是否产生可执行程序
+        struct stat st;
+        int ret = stat(ExePath(filename).c_str(), &st);
+        if(ret < 0)
+        {
+            LOG(ERROR, "Compile error! Exe filename is ") << ExePath(filename) << std::endl;
+            return false;
+        }
+        return true;
    }
 
-   static bool Run()
+   static int Run(std::string& filename)
    {
+        //可执行程序
+        //1、创建子进程
+        //   父进程 进程等待
+        //   子进程 替换编译出来的程序
+        int pid = fork();
+        if(pid < 0)
+        {
+            LOG(ERROR, "Exec pragma failed！ Create child process failed") << std::endl;
+            return -1;
+        }
+        else if(0 == pid)
+        {
+            //对于子进程执行的限制
+            //1、时间限制   alarm
+            alarm(1);
+            //2、内存大小限制  setrlimit
+            struct rlimit rl;
+            rl.rlim_cur = 1024 * 30000;
+            rl.rlim_max = RLIM_INFINITY; //无限制
+            setrlimit(RLIMIT_AS, &rl);
 
+            //child
+            // 获取 : 标准输出---> 重定向到文件
+            int stdout_fd = open(StdoutPath(filename).c_str(), O_CREAT | O_RDWR, 0664);
+            if(stdout_fd < 0)
+            {
+                LOG(ERROR, "Open stdout file failed ") << StdoutPath(filename) << std::endl;
+                return -1;
+            }
+            dup2(stdout_fd, 1); 
+            //    标准错误---> 重定向到文件
+            int stderr_fd = open(StderrPath(filename).c_str(), O_CREAT | O_RDWR, 0664);
+            if(stderr_fd < 0)
+            {
+                LOG(ERROR, "Open stderr file failed ") << StderrPath(filename) << std::endl;
+                return -1;
+            }
+            dup2(stdout_fd, 2); 
+            execl(ExePath(filename).c_str(), ExePath(filename).c_str(), NULL);
+            exit(1);
+        }
+        else
+        {
+            //father
+            int Status = -1;
+            waitpid(pid, &Status, 0);
+            //将是否收到信号的信息返回给调用者，如果调用者判断是0，则正常运行完毕，否则收到某个信号，异常结束
+            return Status & 0X7f;
+        }
    }
 };
