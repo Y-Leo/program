@@ -1,142 +1,89 @@
+//MVC => model: 负责数据存储
+
+//约定以文件的形式存储题目信息
+//所有题目的 题目序号，题目名称，题目难度，题目所在路径，保存在oj_data/oj_config.cfg文件中
+//约定每个题目在oj_data目录中就对应着一个目录，目录的名字为题目的id
+//主要包含以下几个文件：
+//1)  desc.txt    题目描述
+//2） header.cpp  代码框架
+//3） tail.cpp    代码测试用例
+
 #pragma once
-#include <iostream>
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <fstream>
-#include <algorithm>
-#include "tools.hpp"
-#include "oj_log.hpp"
+#include<vector>
+#include<string>
+#include<map>
+#include<fstream>
+#include"util.hpp"
 
-//试题信息有四个部分需要维护
-//试题ID、试题名称、试题路径、试题难度
-//用一个结构体来维护
-typedef struct Question 
-{
-    std::string id_;
-    std::string name_;
-    std::string path_;
-    std::string star_;
-} QUES;
+struct Question{
+    std::string id;    //题目序号
+    std::string name;  //题目名称
+    std::string dir;   //题目所在路径
+    std::string star;  //题目难度
 
-class OjModel
-{
-    public:
-        OjModel()
-        {
-            LoadQuestions("./config_oj.cfg");
+    //一个题目的详细信息
+    std::string desc;       //题目描述
+    std::string header_cpp; //代码框架
+    std::string tail_cpp;   //测试用例
+};
+
+class OjModel{
+private:
+    //使用map来组织题目的数据信息       id : Question
+    std::map<std::string,Question> model_;
+
+public:
+    //加载题库到内存中，用map来组织数据
+    bool Load(){
+        //1. 打开oj_config.cfg文件
+        std::ifstream file("./oj_data/oj_config.cfg");
+        if(!file.is_open()){
+            return false;
         }
-        bool GetAllQuestions(std::vector<Question>* ques)
-        {
-            for(const auto& kv : model_map_)
-            {
-                ques->push_back(kv.second);
+        //2. 按行读取oj_config.cfg文件
+        std::string line;
+        while(std::getline(file,line)){
+            //3. 解析每个题目的信息   （题目序号，题目名称，题目难度，题目所在路径）
+            std::vector<std::string> tokens;
+            //   调用自己封装的工具类进行解析    约定间隔为四个空格
+            StringUtil::Split(line,"    ",&tokens);
+            if(tokens.size()!=4){
+                LOG(ERROR) << "config file format error!\n";
+                continue;
             }
-            std::sort(ques->begin(),ques->end(),[](const Question& l, const Question& r){
-                      return std::atoi(l.id_.c_str()) < std::atoi(r.id_.c_str());
-                      });
-            return true;
-        }        
-
-        bool GetOneQuestion(const std::string& id, std::string* desc, std::string* header, Question* ques)
-        {
-            //1、根据id去查找对应的题目信息，最重要的是这个题目在哪加载
-            auto iter = model_map_.find(id);
-            if(iter == model_map_.end())
-            {
-                LOG(ERROR, "Not Found Question id is ") << id << std::endl;
-                return false; 
-            }
-            //iter->second.path_;+ (desc.txt header.cpp)
-            *ques = iter->second;
-
-            //加载具体的单个题目信息,从保存的路径上面去加载
-            //从具体的题目文件当中去获取两部分信息，描述，header头
-            int ret = FileOper::ReadDataFromFile(DescPath(iter->second.path_), desc);
-            if(ret == -1)
-            {
-                LOG(ERROR, "Read desc failed ") << std::endl;
-                return false;
-            }
-            ret = FileOper::ReadDataFromFile(HeaderPath(iter->second.path_), header);
-            if(ret == -1)
-            {
-                LOG(ERROR, "Read header failed ") << std::endl;
-                return false;
-            }
-            return true;
+            //4. 填充结构体，把结构体加入到map中
+            Question q;
+            q.id = tokens[0];
+            q.name = tokens[1];
+            q.star = tokens[2];
+            q.dir = tokens[3];
+            //   调用自己封装的工具类读取文件，写入结构体
+            FileUtil::Read(q.dir+"/desc.txt",&q.desc);
+            FileUtil::Read(q.dir+"/header.hpp",&q.header_cpp);
+            FileUtil::Read(q.dir+"/tail.cpp",&q.tail_cpp);
+            model_[q.id] = q;
         }
-    
-        bool SplicingCode(std::string user_code, const std::string& ques_id, std::string* code)
-        {
-            //1、查找对应id 题目是否存在
-            auto iter = model_map_.find(ques_id);
-            if(iter == model_map_.end())
-            {
-                LOG(ERROR, "Can not find question id is ") << ques_id << std::endl;
-                return false;
-            }
+        file.close();
+        LOG(INFO) << "Load " << model_.size() << " questions\n";
+        return true;
+    }
 
-            std::string tail_code;
-            int ret = FileOper::ReadDataFromFile(TailPath(iter->second.path_), &tail_code);
-            if(ret < 0)
-            {
-                LOG(ERROR, "Open tail.cpp failed");
-                return false;
-            }
-            *code = user_code + tail_code;
-            return true;
+    //获取所有题目信息
+    bool GetAllQuestions(std::vector<Question>* questions) const{
+        questions->clear();
+        for(const auto& kv : model_){
+            questions->push_back(kv.second);
         }
+        return true;
+    }
 
-    private:
-        bool LoadQuestions(const std::string& configfile_path)
-        {
-            std::ifstream file(configfile_path.c_str());
-            if(!file.is_open())
-            {
-                 return false;
-            }
-
-            std::string line;
-            while(std::getline(file, line))
-            {
-                //一行数据
-                //1、切割字符串
-                std::vector<std::string> vec;
-                StringTools::Split(line, " ", &vec);
-                if(vec.size() != 4)
-                {
-                    continue;
-                }
-                //2、切割后的内容保存到unordered_map中去
-                Question ques;
-                ques.id_ = vec[0];
-                ques.name_ = vec[1];
-                ques.path_ = vec[2];
-                ques.star_ = vec[3];
-                model_map_[ques.id_] = ques;
-            }
-            file.close();
-            return true;
+    //获取指定id的题目信息
+    bool GetQuestion(const std::string& id,Question* q) const{
+        const auto pos = model_.find(id);
+        if(pos == model_.end()){
+            return false;
         }
-
-    private:
-        std::string DescPath(const std::string& ques_path)
-        {
-            return ques_path + "desc.txt";
-        }
-        std::string HeaderPath(const std::string& ques_path)
-        {
-            return ques_path + "header.cpp";
-        }
-        std::string TailPath(const std::string& ques_path)
-        {
-            return ques_path + "tail.cpp";
-        }
-
-    private:
-        //管理方式：
-        //map（底层红黑树）:map<key(id),value(TestQues)> model_map;
-        //unordered_map（底层哈希表）：<key,value>
-        std::unordered_map<std::string, Question> model_map_;
+        *q = pos->second;
+        return true;
+    }
 };

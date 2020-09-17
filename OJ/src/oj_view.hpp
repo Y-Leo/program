@@ -1,58 +1,66 @@
+//MVC => view: 负责显示页面
+
 #pragma once
-//直接包含，直接使用，缺点：可能会找不到头文件，所以报错 解决：在编译时使用-I选项指定头文件路径就可以了
-//设置环境变量 CPLUS_INCLUDE_PATH
-#include <ctemplate/template.h> 
+#include<ctemplate/template.h>
+#include"oj_model.hpp"
 
-#include <string>
-#include <vector>
-#include "oj_model.hpp"
-
-class OjView
-{
+class OjView{
 public:
-    //渲染html界面，并且将该页面返还给调用
-    static void ExpandAllQuestionshtml(std::string* html, std::vector<Question>& ques)
-    {
-        //1、获取数据字典--->将拿到的试题数据按照一定顺序保存到内存当中
+    //根据所有的题目列表信息，生成HTML， 供网站首页显示
+    static void RenderAllQuestions(const std::vector<Question>& all_questions,
+                                   std::string* html){
+        //使用ctemplate开源库来构造HTML
+        
+        //1. 先创建一个ctemplate对象
         ctemplate::TemplateDictionary dict("all_questions");
 
-        for(const auto& que : ques)
-        {
-            ctemplate::TemplateDictionary* section_dict = dict.AddSectionDictionary("question");
-            section_dict->SetValue("id", que.id_);
-            section_dict->SetValue("id", que.id_);
-            section_dict->SetValue("name", que.name_);
-            section_dict->SetValue("star", que.star_);
+        //2. 循环添加对象
+        for(const auto& question : all_questions ){
+            ctemplate::TemplateDictionary* table_dict = dict.AddSectionDictionary("question");
+
+            //3. 每个对象设置键值对的时候是和模板中留下的{{}}对应的
+            table_dict->SetValue("id",question.id);
+            table_dict->SetValue("name",question.name);
+            table_dict->SetValue("star",question.star);
         }
-        //2、获取模板类指针，加载预定义的html界面到内存当中
-        ctemplate::Template* t1 = ctemplate::Template::GetTemplate("./template/all_questions.html", ctemplate::DO_NOT_STRIP);
-        //3、渲染，拿着模板类的指针，将数据字典中的数据更新到html页面的内存当中
-        t1->Expand(html, &dict);
+
+        //4. 进行数据的替换，生成最终的HTML
+        ctemplate::Template* tpl = ctemplate::Template::GetTemplate("./template/all_questions.html",
+                                                                    ctemplate::DO_NOT_STRIP);
+        tpl->Expand(html,&dict);
     }
 
-    //id name star desc header ==> string html
-    static void ExpandOneQuestion(const Question& ques, std::string& desc, std::string& header, std::string* html)
-    {
+    //根据指定的question, 生成HTML
+    static void RenderQuestion(const Question& question,std::string* html){
+        //1. 先创建一个ctemplate对象
         ctemplate::TemplateDictionary dict("question");
-        dict.SetValue("id",ques.id_);
-        dict.SetValue("name",ques.name_);
-        dict.SetValue("star_",ques.star_);
-
-        dict.SetValue("desc",desc);
-        dict.SetValue("header",header);
-
-        ctemplate::Template* tp1 = ctemplate::Template::GetTemplate("./template/question.html", ctemplate::DO_NOT_STRIP);
-        tp1->Expand(html, &dict);
+        
+        //2. 设置键值对，是和模板中留下的{{}}对应的
+        dict.SetValue("id",question.id);
+        dict.SetValue("name",question.name);
+        dict.SetValue("star",question.star);
+        dict.SetValue("desc",question.desc);
+        dict.SetValue("header",question.header_cpp);
+        
+        //3. 进行数据的替换，生成最终的HTML
+        ctemplate::Template* tpl = ctemplate::Template::GetTemplate("./template/question.html",
+                                                                    ctemplate::DO_NOT_STRIP);
+        tpl->Expand(html,&dict);
     }
 
-    static void ExpandReason(const std::string& errorno, const std::string& reason, const std::string& stdout_reason, std::string* html)
-    {
-        ctemplate::TemplateDictionary dict("reason");
-        dict.SetValue("errorno",errorno);
-        dict.SetValue("reason",reason);
-        dict.SetValue("stdout",stdout_reason);
+    //根据运行结果或编译出错的结果，构造生成HTML
+    static void RenderResult(const std::string& str_stdout,
+                             const std::string& reason,std::string* html){
+        //1. 先创建一个ctemplate对象
+        ctemplate::TemplateDictionary dict("result");
 
-        ctemplate::Template* tp1 = ctemplate::Template::GetTemplate("./template/reason.html", ctemplate::DO_NOT_STRIP);
-        tp1->Expand(html, &dict);
+        //2. 设置键值对，是和模板中留下的{{}}对应的
+        dict.SetValue("stdout",str_stdout);
+        dict.SetValue("reason",reason);
+
+        //3. 进行数据的替换，生成最终的HTML
+        ctemplate::Template* tpl = ctemplate::Template::GetTemplate("./template/result.html",
+                                                                    ctemplate::DO_NOT_STRIP);
+        tpl->Expand(html,&dict);
     }
 };

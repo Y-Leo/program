@@ -1,19 +1,13 @@
 <html>
     <head>
-        <title>在线OJ</title>
+        <meta http-equiv="content-type" content="text/html;charset=utf-8">
     </head>
     <body>
-        <!--描述-->
-        <div>{{id}}.{{name}} {{star}}</div>
-        <div>{{desc}}</div>
-        <!--代码的编辑框-->
-        <div>
-            <form action="/question/{{id}}" method="POST">
-                <textarea name="code" rows=50 cols=150>{{header}}</textarea>
-                <br>
-                <!--<textarea name="stdin" rows=10 cols=150></textarea>-->
-                <input type="submit" formenctype="appliaction/json" value="Submit">
-            </form>
-        </div>
+        <div>{{id}}.{{name}}.{{star}}</div>
+        <div><pre>{{desc}}</pre></div>
+        <form action="/compile/{{id}}" method = "POST">
+            <textarea type="text" name="code" rows=30 cols=100>{{header}}</textarea>
+            <input type="submit" value="Submit">
+        </form>
     </body>
 </html>
